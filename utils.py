@@ -18,7 +18,7 @@ def calculate_checksum(data):
     return ~checksum & 0xFFFF
 
 def fragment_file(file_data):
-    """Split file into segments and add sequence numbers."""
+    """Split file into segments."""
     segments = []
     total_segments = (len(file_data) + SEGMENT_SIZE - 1) // SEGMENT_SIZE
     
@@ -26,7 +26,7 @@ def fragment_file(file_data):
         start = i * SEGMENT_SIZE
         end = start + SEGMENT_SIZE
         segment = file_data[start:end]
-        segments.append((i, segment))
+        segments.append(segment)
     
     return segments
 
@@ -52,4 +52,4 @@ def create_segment_packet(seq_num, data):
 def verify_checksum(data, received_checksum):
     """Verify the integrity of received data using checksum."""
     calculated_checksum = calculate_checksum(data)
-    return calculated_checksum == received_checksum 
+    return calculated_checksum == received_checksum

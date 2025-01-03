@@ -84,15 +84,24 @@
         $(document).ready(function() {
             $('#connect-form').on('submit', function(e) {
                 e.preventDefault();
+                const host = $('#host').val();
+                const port = $('#port').val();
+                
+                showMessage('info', `Connecting to ${host}:${port}...`);
+                
                 $.ajax({
                     url: '/connect',
                     method: 'POST',
                     data: {
-                        host: $('#host').val(),
-                        port: $('#port').val()
+                        host: host,
+                        port: port
                     },
                     success: function(response) {
-                        showMessage(response.status, response.message);
+                        if (response.status === 'success') {
+                            showMessage('success', response.message.replace('\n', '<br>'));
+                        } else {
+                            showMessage('error', response.message);
+                        }
                     },
                     error: function() {
                         showMessage('error', 'Failed to connect to server');
@@ -102,17 +111,40 @@
 
             $('#file-form').on('submit', function(e) {
                 e.preventDefault();
+                const filename = $('#filename').val();
+                showMessage('info', `Requesting file: ${filename}...`);
+                
                 $.ajax({
                     url: '/request-file',
                     method: 'POST',
                     data: {
-                        filename: $('#filename').val()
+                        filename: filename
                     },
+                    timeout: 30000,  // 30 second timeout
                     success: function(response) {
-                        showMessage(response.status, response.message);
+                        if (response.status === 'error') {
+                            showMessage('error', response.message);
+                        } else {
+                            // Create blob and download
+                            const blob = new Blob([response], { type: 'application/octet-stream' });
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = filename;
+                            document.body.appendChild(a);
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+                            document.body.removeChild(a);
+                            showMessage('success', 'File downloaded successfully');
+                        }
                     },
-                    error: function() {
-                        showMessage('error', 'Failed to request file');
+                    error: function(xhr) {
+                        let errorMsg = 'Failed to download file';
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            errorMsg = response.message || errorMsg;
+                        } catch(e) {}
+                        showMessage('error', errorMsg);
                     }
                 });
             });
@@ -171,9 +203,10 @@
 
             function showMessage(status, message) {
                 const alertDiv = $('#status-message');
-                alertDiv.removeClass('alert-success alert-danger')
-                    .addClass(status === 'success' ? 'alert-success' : 'alert-danger')
-                    .text(message)
+                alertDiv.removeClass('alert-success alert-danger alert-info')
+                    .addClass(status === 'success' ? 'alert-success' : 
+                            status === 'info' ? 'alert-info' : 'alert-danger')
+                    .html(message)
                     .show();
             }
 

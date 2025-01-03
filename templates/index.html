@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TCP File Client</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .container { max-width: 800px; margin-top: 50px; }
+        .status-message { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mb-4">TCP File Client</h1>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                Server Connection
+            </div>
+            <div class="card-body">
+                <form id="connect-form">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="host" class="form-label">Host</label>
+                            <input type="text" class="form-control" id="host" value="localhost" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="port" class="form-label">Port</label>
+                            <input type="number" class="form-control" id="port" value="12345" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Connect</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                Upload File
+            </div>
+            <div class="card-body">
+                <form id="upload-form" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Select File</label>
+                        <input type="file" class="form-control" id="file" name="file" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Upload</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                Available Files
+            </div>
+            <div class="card-body">
+                <div id="file-list" class="list-group">
+                    <!-- Files will be listed here -->
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                Request File
+            </div>
+            <div class="card-body">
+                <form id="file-form">
+                    <div class="mb-3">
+                        <label for="filename" class="form-label">Filename</label>
+                        <input type="text" class="form-control" id="filename" required>
+                    </div>
+                    <button type="submit" class="btn btn-success">Request File</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="status-message" class="alert status-message" style="display: none;"></div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#connect-form').on('submit', function(e) {
+                e.preventDefault();
+                $.ajax({
+                    url: '/connect',
+                    method: 'POST',
+                    data: {
+                        host: $('#host').val(),
+                        port: $('#port').val()
+                    },
+                    success: function(response) {
+                        showMessage(response.status, response.message);
+                    },
+                    error: function() {
+                        showMessage('error', 'Failed to connect to server');
+                    }
+                });
+            });
+
+            $('#file-form').on('submit', function(e) {
+                e.preventDefault();
+                $.ajax({
+                    url: '/request-file',
+                    method: 'POST',
+                    data: {
+                        filename: $('#filename').val()
+                    },
+                    success: function(response) {
+                        showMessage(response.status, response.message);
+                    },
+                    error: function() {
+                        showMessage('error', 'Failed to request file');
+                    }
+                });
+            });
+
+            $('#upload-form').on('submit', function(e) {
+                e.preventDefault();
+                var formData = new FormData();
+                formData.append('file', $('#file')[0].files[0]);
+                
+                $.ajax({
+                    url: '/upload',
+                    method: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        showMessage(response.status, response.message);
+                        if (response.status === 'success') {
+                            loadFiles();
+                            $('#file').val('');
+                        }
+                    },
+                    error: function() {
+                        showMessage('error', 'Failed to upload file');
+                    }
+                });
+            });
+
+            function loadFiles() {
+                $.get('/files', function(files) {
+                    const fileList = $('#file-list');
+                    fileList.empty();
+                    
+                    files.forEach(function(file) {
+                        const size = (file.size / 1024).toFixed(2);
+                        fileList.append(`
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>${file.name}</strong>
+                                    <small class="text-muted ms-2">${size} KB</small>
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary request-file" data-filename="${file.name}">
+                                    Request
+                                </button>
+                            </div>
+                        `);
+                    });
+                });
+            }
+
+            $(document).on('click', '.request-file', function() {
+                const filename = $(this).data('filename');
+                $('#filename').val(filename);
+                $('#file-form').submit();
+            });
+
+            function showMessage(status, message) {
+                const alertDiv = $('#status-message');
+                alertDiv.removeClass('alert-success alert-danger')
+                    .addClass(status === 'success' ? 'alert-success' : 'alert-danger')
+                    .text(message)
+                    .show();
+            }
+
+            // Load files on page load
+            loadFiles();
+        });
+    </script>
+</body>
+</html>

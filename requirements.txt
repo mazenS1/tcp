@@ -1,0 +1,2 @@
+# No external dependencies required - using only Python standard library 
+flask==3.0.0

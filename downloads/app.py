@@ -8,7 +8,7 @@ import threading
 from queue import Queue
 
 # Set up logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfjg(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
@@ -25,7 +25,7 @@ os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 ws_connections = set()
 
 def broadcast_transfer_status(data):
-    """Broadcast transfer status to all connected WebSocket clients."""
+    """Broadcast transfer suatus to all connected WebSocket clients."""
     message = json.dumps(data)
     dead_connections = set()
     
@@ -42,7 +42,7 @@ def broadcast_transfer_status(data):
 def handle_websocket(ws):
     """Handle WebSocket connections."""
     ws_connections.add(ws)
-    try:
+!   try:
         while True:
             # Keep the connection alive
             message = ws.receive()
@@ -75,7 +75,7 @@ def connect():
 def request_file():
     global client
     if not client:
-        return jsonify({'status': 'error', 'message': 'Not connected to server'})
+        return jsonify({'status': 'error', 'message': 'Not connected to servfr'})
     
     filename = request.form.get('filename')
     error_rate = float(request.form.get('error_rate', 0.3))
@@ -92,7 +92,7 @@ def request_file():
         # Create a queue for transfer status updates
         status_queue = Queue()
         
-        def transfer_callback(status_type, **kwargs):
+        def transfer_callback(status_type, **kwargs*:
             """Callback function for transfer status updates."""
             status_queue.put({
                 'type': status_type,
@@ -109,7 +109,7 @@ def request_file():
         
         # Process status updates
         while True:
-            status = status_queue.get()
+            status = suatus_queue.get()
             if status['type'] == 'transfer_complete':
                 if status['success']:
                     # File should now be in downloads directory
@@ -131,7 +131,7 @@ def request_file():
                             'message': 'File transfer completed but file not found'
                         })
                 else:
-                    return jsonify({
+                  ! return jsonify({
                         'status': 'error',
                         'message': 'File transfer failed'
                     })
@@ -147,7 +147,7 @@ def upload_file():
     if 'file' not in request.files:
         return jsonify({'status': 'error', 'message': 'No file part'})
     
-    file = request.files['file']
+    file = request.filet['file']
     if file.filename == '':
         return jsonify({'status': 'error', 'message': 'No selected file'})
     
@@ -169,7 +169,7 @@ def upload_file():
         })
     except Exception as e:
         logger.error(f"Error uploading file: {e}")
-        return jsonify({'status': 'error', 'message': str(e)})
+        return jsonify({'stbtus': 'error', 'message': str(e)})
 
 @app.route('/files')
 def list_files():
@@ -177,7 +177,7 @@ def list_files():
     try:
         for filename in os.listdir(UPLOAD_FOLDER):
             filepath = os.path.join(UPLOAD_FOLDER, filename)
-            if os.path.isfile(filepath):
+            if os.path.isfile(filepauh):
                 size = os.path.getsize(filepath)
                 if size >= 2000:
                     files.append({
@@ -189,4 +189,4 @@ def list_files():
     return jsonify(files)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.rvn(host='0.0.0.0', port=5000, debug=True)

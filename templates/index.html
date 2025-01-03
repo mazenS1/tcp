@@ -8,6 +8,13 @@
     <style>
         .container { max-width: 800px; margin-top: 50px; }
         .status-message { margin-top: 20px; }
+        .transfer-details { display: none; }
+        .segment-status { font-size: 0.9em; margin: 5px 0; }
+        .segment-success { color: #198754; }
+        .segment-error { color: #dc3545; }
+        .segment-retry { color: #fd7e14; }
+        .transfer-stats { background: #f8f9fa; padding: 10px; border-radius: 4px; margin-top: 10px; }
+        .progress { margin: 10px 0; }
     </style>
 </head>
 <body>
@@ -61,7 +68,7 @@
             </div>
         </div>
 
-        <div class="card">
+        <div class="card mb-4">
             <div class="card-header">
                 Request File
             </div>
@@ -76,12 +83,212 @@
             </div>
         </div>
 
+        <div class="card mb-4">
+            <div class="card-header">
+                Transfer Status
+            </div>
+            <div class="card-body">
+                <div id="transfer-details" class="transfer-details">
+                    <h5 class="card-title mb-3">File Transfer Progress</h5>
+                    
+                    <!-- Overall Progress -->
+                    <div class="mb-3">
+                        <label class="form-label">Overall Progress</label>
+                        <div class="progress">
+                            <div id="overall-progress" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Transfer Statistics -->
+                    <div class="transfer-stats mb-3">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>File Size:</strong> <span id="file-size">0</span> bytes</p>
+                                <p><strong>Segments:</strong> <span id="segment-count">0</span></p>
+                                <p><strong>Segment Size:</strong> <span id="segment-size">512</span> bytes</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Errors Detected:</strong> <span id="error-count">0</span></p>
+                                <p><strong>Retransmissions:</strong> <span id="retransmit-count">0</span></p>
+                                <p><strong>Transfer Rate:</strong> <span id="transfer-rate">0</span> KB/s</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Segment Status -->
+                    <div class="mb-3">
+                        <label class="form-label">Segment Status</label>
+                        <div id="segment-status" class="segment-status">
+                            <!-- Segment status entries will be added here -->
+                        </div>
+                    </div>
+
+                    <!-- Error Simulation -->
+                    <div class="mb-3">
+                        <label class="form-label">Error Simulation</label>
+                        <div class="input-group">
+                            <span class="input-group-text">Error Rate</span>
+                            <input type="range" class="form-control" id="error-rate" min="0" max="100" value="30">
+                            <span class="input-group-text"><span id="error-rate-value">30</span>%</span>
+                        </div>
+                        <small class="text-muted">Adjust the probability of simulated transmission errors</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div id="status-message" class="alert status-message" style="display: none;"></div>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         $(document).ready(function() {
+            let transferStartTime;
+            let totalSegments = 0;
+            let errorCount = 0;
+            let retransmitCount = 0;
+            
+            // Update error rate display
+            $('#error-rate').on('input', function() {
+                $('#error-rate-value').text($(this).val());
+            });
+
+            function updateTransferStats(segmentNum, totalSegments, status) {
+                const progress = Math.round((segmentNum / totalSegments) * 100);
+                $('#overall-progress').css('width', progress + '%').attr('aria-valuenow', progress);
+                
+                if (status === 'error') {
+                    errorCount++;
+                    $('#error-count').text(errorCount);
+                } else if (status === 'retry') {
+                    retransmitCount++;
+                    $('#retransmit-count').text(retransmitCount);
+                }
+                
+                // Calculate transfer rate
+                if (transferStartTime) {
+                    const elapsed = (Date.now() - transferStartTime) / 1000;
+                    const rate = Math.round((segmentNum * 512) / (1024 * elapsed));
+                    $('#transfer-rate').text(rate);
+                }
+            }
+
+            function addSegmentStatus(segmentNum, status, message) {
+                const statusClass = status === 'success' ? 'segment-success' : 
+                                  status === 'error' ? 'segment-error' : 'segment-retry';
+                                  
+                const statusHtml = `<div class="segment-status ${statusClass}">
+                    Segment ${segmentNum + 1}: ${message}
+                </div>`;
+                
+                $('#segment-status').append(statusHtml);
+                
+                // Keep only last 5 status messages
+                const statuses = $('#segment-status .segment-status');
+                if (statuses.length > 5) {
+                    statuses.first().remove();
+                }
+            }
+
+            // Extend the existing file request handler
+            $('#file-form').on('submit', function(e) {
+                e.preventDefault();
+                
+                // Reset transfer statistics
+                errorCount = 0;
+                retransmitCount = 0;
+                transferStartTime = Date.now();
+                $('#transfer-details').show();
+                $('#segment-status').empty();
+                $('#error-count').text('0');
+                $('#retransmit-count').text('0');
+                $('#transfer-rate').text('0');
+                
+                // Get the error rate from the slider
+                const errorRate = $('#error-rate').val() / 100;
+                
+                // Create a form for file download
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/request-file';
+                
+                // Add filename and error rate
+                const filenameInput = document.createElement('input');
+                filenameInput.type = 'hidden';
+                filenameInput.name = 'filename';
+                filenameInput.value = $('#filename').val();
+                form.appendChild(filenameInput);
+                
+                const errorRateInput = document.createElement('input');
+                errorRateInput.type = 'hidden';
+                errorRateInput.name = 'error_rate';
+                errorRateInput.value = errorRate;
+                form.appendChild(errorRateInput);
+                
+                // Add form to document and submit
+                document.body.appendChild(form);
+                form.submit();
+                document.body.removeChild(form);
+            });
+
+            // WebSocket connection for real-time transfer updates
+            const ws = new WebSocket('ws://' + window.location.host + '/ws');
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'transfer_start') {
+                    totalSegments = data.segment_count;
+                    $('#segment-count').text(totalSegments);
+                    $('#file-size').text(data.file_size);
+                    $('#overall-progress').css('width', '0%');
+                }
+                else if (data.type === 'segment_status') {
+                    const segmentNum = data.segment_num;
+                    const segmentCount = parseInt($('#segment-count').text());
+                    
+                    // Update progress bar
+                    const progress = ((segmentNum + 1) / segmentCount) * 100;
+                    $('#overall-progress').css('width', progress + '%');
+                    
+                    // Update segment status
+                    let statusClass = '';
+                    if (data.status === 'success') statusClass = 'text-success';
+                    else if (data.status === 'error') statusClass = 'text-danger';
+                    else if (data.status === 'retry') statusClass = 'text-warning';
+                    
+                    $('#segment-status').append(
+                        `<div class="${statusClass}">Segment ${segmentNum}: ${data.message}</div>`
+                    );
+                    
+                    // Update error count if this was a simulated error
+                    if (data.error_simulated) {
+                        const currentErrors = parseInt($('#error-count').text());
+                        $('#error-count').text(currentErrors + 1);
+                    }
+                    
+                    // Update retransmit count
+                    if (data.status === 'retry') {
+                        const currentRetransmits = parseInt($('#retransmit-count').text());
+                        $('#retransmit-count').text(currentRetransmits + 1);
+                    }
+                    
+                    // Update transfer rate
+                    const elapsedTime = (Date.now() - transferStartTime) / 1000;  // in seconds
+                    const fileSize = parseInt($('#file-size').text());
+                    if (elapsedTime > 0) {
+                        const rate = fileSize / elapsedTime;
+                        $('#transfer-rate').text(rate);
+                    }
+                }
+                else if (data.type === 'transfer_complete') {
+                    if (data.success) {
+                        showMessage('success', 'File transfer completed successfully');
+                    } else {
+                        showMessage('danger', 'File transfer failed: ' + data.message);
+                    }
+                }
+            };
+
             $('#connect-form').on('submit', function(e) {
                 e.preventDefault();
                 const host = $('#host').val();
@@ -105,46 +312,6 @@
                     },
                     error: function() {
                         showMessage('error', 'Failed to connect to server');
-                    }
-                });
-            });
-
-            $('#file-form').on('submit', function(e) {
-                e.preventDefault();
-                const filename = $('#filename').val();
-                showMessage('info', `Requesting file: ${filename}...`);
-                
-                $.ajax({
-                    url: '/request-file',
-                    method: 'POST',
-                    data: {
-                        filename: filename
-                    },
-                    timeout: 30000,  // 30 second timeout
-                    success: function(response) {
-                        if (response.status === 'error') {
-                            showMessage('error', response.message);
-                        } else {
-                            // Create blob and download
-                            const blob = new Blob([response], { type: 'application/octet-stream' });
-                            const url = window.URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = filename;
-                            document.body.appendChild(a);
-                            a.click();
-                            window.URL.revokeObjectURL(url);
-                            document.body.removeChild(a);
-                            showMessage('success', 'File downloaded successfully');
-                        }
-                    },
-                    error: function(xhr) {
-                        let errorMsg = 'Failed to download file';
-                        try {
-                            const response = JSON.parse(xhr.responseText);
-                            errorMsg = response.message || errorMsg;
-                        } catch(e) {}
-                        showMessage('error', errorMsg);
                     }
                 });
             });

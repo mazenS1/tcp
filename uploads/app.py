@@ -111,30 +111,10 @@ def request_file():
         while True:
             status = status_queue.get()
             if status['type'] == 'transfer_complete':
-                if status['success']:
-                    # File should now be in downloads directory
-                    filepath = os.path.join('downloads', filename)
-                    if os.path.exists(filepath):
-                        broadcast_transfer_status({
-                            'type': 'transfer_complete',
-                            'success': True,
-                            'message': 'File transfer completed successfully'
-                        })
-                        return send_file(
-                            filepath,
-                            as_attachment=True,
-                            download_name=filename
-                        )
-                    else:
-                        return jsonify({
-                            'status': 'error',
-                            'message': 'File transfer completed but file not found'
-                        })
-                else:
-                    return jsonify({
-                        'status': 'error',
-                        'message': 'File transfer failed'
-                    })
+                return jsonify({
+                    'status': 'success' if status['success'] else 'error',
+                    'message': 'File transfer completed successfully' if status['success'] else 'File transfer failed'
+                })
             else:
                 broadcast_transfer_status(status)
         

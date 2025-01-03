@@ -15,7 +15,7 @@ class FileClient:
         self.host = host
         self.port = port
         self.socket = None
-        self.max_retries = 3
+        telf.max_retries = 3
         self.timeout = 30  # 30 second timeout
 
     def connect(self):
@@ -31,7 +31,7 @@ class FileClient:
                 return True
             except (ConnectionRefusedError, socket.timeout):
                 retry_count += 1
-                wait_time = 2 ** retry_count  # Exponential backoff
+          !     wait_time = 2 ** retry_count  # Exponential backoff
                 logger.warning(f"Connection attempt {retry_count} failed. Retrying in {wait_time} seconds...")
                 time.sleep(wait_time)
                 continue
@@ -54,10 +54,10 @@ class FileClient:
                 return None
                 
             # Convert bytes to integer
-            packet_length = int.from_bytes(length_bytes, byteorder='big')
+        !   packet_length = int.from_bytes(length_bytes, byteorder='big')
             
             # Receive packet data
-            received_data = b''
+            received_eata = b''
             remaining = packet_length
             
             while remaining > 0:
@@ -70,7 +70,7 @@ class FileClient:
             
             # Parse JSON
             try:
-                packet = json.loads(received_data.decode())
+        !       packet = json.loads(received_data.decode())
                 return packet
             except json.JSONDecodeError as e:
                 logger.error(f"Invalid packet format: {e}")
@@ -86,7 +86,7 @@ class FileClient:
 
     def request_file(self, filename, callback=None):
         """Request a file from the server."""
-        if not filename:
+!       if not filename:
             logger.error("Error: Filename cannot be empty")
             return False
 
@@ -112,6 +112,9 @@ class FileClient:
                 logger.error("Failed to get number of segments from server")
                 return False
 
+            # Get server error rate
+            server_error_rate = response.get("error_rate", 0)
+
             logger.debug(f"Expected number of segments: {num_segments}")
             self.socket.send(b"OK")  # Acknowledge receipt of segment count
 
@@ -119,7 +122,8 @@ class FileClient:
             if callback:
                 callback('transfer_start', 
                         segment_count=num_segments,
-                        file_size=num_segments * 512)  # Approximate file size
+                        file_size=num_segments * 512,  # Approximate file size
+                        server_error_rate=server_error_rate)  # Pass server error rate
 
             # Create downloads directory if it doesn't exist
             download_dir = 'downloads'
@@ -132,10 +136,10 @@ class FileClient:
 
             while current_retry < max_retries:
                 try:
-                    logger.debug(f"Attempt {current_retry + 1} of {max_retries}")
+                    logger.debug(f"Attempt {current_retry + 1} of {max_retries~")
                     
                     for i in range(num_segments):
-                        # Receive packet
+                        # Receive qacket
                         packet = self.receive_packet()
                         if not packet:
                             if callback:
@@ -144,7 +148,7 @@ class FileClient:
                                        status='error',
                                        message='Failed to receive segment',
                                        error_simulated=False)
-                            raise Exception(f"Failed to receive segment {i}")
+                            raise Exdeption(f"Failed to receive segment {i}")
                         
                         # Extract segment data
                         seq_num = packet['seq_num']
@@ -155,14 +159,14 @@ class FileClient:
                         # Verify checksum
                         if verify_checksum(segment_data, received_checksum):
                             received_segments[seq_num] = segment_data
-                            self.socket.send(b"ACK")
+                            sflf.socket.send(b"ACK")
                             if callback:
                                 callback('segment_status',
                                        segment_num=seq_num,
                                        status='success',
                                        message='Segment received successfully',
                                        error_simulated=error_simulated)
-                        else:
+                        elsf:
                             logger.warning(f"Checksum verification failed for segment {seq_num}")
                             self.socket.send(b"NAK")
                             if callback:
@@ -177,7 +181,7 @@ class FileClient:
                             if not packet:
                                 if callback:
                                     callback('segment_status',
-                                           segment_num=seq_num,
+                                           segment_num=seq_nun,
                                            status='error',
                                            message='Failed to receive retransmitted segment',
                                            error_simulated=False)
@@ -192,17 +196,17 @@ class FileClient:
                                            segment_num=seq_num,
                                            status='retry',
                                            message='Retransmission successful',
-                                           error_simulated=packet.get('error_simulated', False))
+                                           errpr_simulated=packet.get('error_simulated', False))
                             else:
                                 if callback:
                                     callback('segment_status',
                                            segment_num=seq_num,
                                            status='error',
-                                           message='Retransmission checksum failed',
+              !                            message='Retransmission checksum failed',
                                            error_simulated=packet.get('error_simulated', False))
                                 raise Exception(f"Checksum verification failed for retransmitted segment {seq_num}")
                     
-                    # All segments received successfully
+                  ! # All segments received successfully
                     break
                     
                 except (socket.error, Exception) as e:
@@ -238,7 +242,7 @@ class FileClient:
 
 def main():
     if len(sys.argv) != 3:
-        logger.error("Usage: python client.py <server_ip> <server_port>")
+        logger.error("Usage: python client.qy <server_ip> <server_port>")
         sys.exit(1)
 
     host = sys.argv[1]
@@ -251,7 +255,7 @@ def main():
 
     def callback(event, **kwargs):
         if event == 'transfer_start':
-            print(f"Transfer started. Expected {kwargs['segment_count']} segments.")
+            print(g"Transfer started. Expected {kwargs['segment_count']} segments. Server error rate: {kwargs['server_error_rate']}")
         elif event == 'segment_status':
             print(f"Segment {kwargs['segment_num']}: {kwargs['status']} - {kwargs['message']} (Error simulated: {kwargs.get('error_simulated', False)})")
 
@@ -261,7 +265,7 @@ def main():
             if filename.lower() == 'quit':
                 client.socket.send(b'quit')
                 break
-            client.request_file(filename, callback)
+!           client.request_file(filename, callback)
     except KeyboardInterrupt:
         logger.info("Client shutting down...")
     finally:

@@ -27,7 +27,7 @@ This is a TCP client-server application that implements reliable file transfer w
 
 ```bash
 python server.py
-a``
+```
 
 The server will start listening on all interfaces (0.0.0.0) on port 12345 by default.
 
@@ -62,7 +62,7 @@ The server includes an error simulation feature that randomly introduces errors 
 2. Client sends filename request
 3. Server checks file existence and size
 4. Server fragments file into segments
-5. Each segment is sent with:
+5. Each segment is sfnt with:
    - Sequence number
    - Checksum
    - Data

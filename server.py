@@ -16,7 +16,7 @@ class FileServer:
     def __init__(self, host='0.0.0.0', port=12345):
         self.host = host
         self.port = port
-        self.error_probability = 0.3  # Can be changed to 0.5 or 0.8
+        self.error_probability = 0.8  # Can be changed to 0.5 or 0.8
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.settimeout(60)  # 60 second timeout for accept()
@@ -113,15 +113,18 @@ class FileServer:
                     segment = segments[seq_num]
                     
                     # Apply error simulation if needed
+                    error_simulated = False
                     if random.random() < self.error_probability:
                         logger.warning(f"Simulating error for segment {seq_num}")
                         segment = inject_error(segment, 1.0)
+                        error_simulated = True
                     
                     # Create and send packet
                     packet = {
                         'seq_num': seq_num,
                         'data': list(segment),
-                        'checksum': calculate_checksum(segment)
+                        'checksum': calculate_checksum(segment),
+                        'error_simulated': error_simulated
                     }
                     
                     if not self.send_packet(client_socket, packet):
@@ -137,7 +140,8 @@ class FileServer:
                             original_packet = {
                                 'seq_num': seq_num,
                                 'data': list(segments[seq_num]),
-                                'checksum': calculate_checksum(segments[seq_num])
+                                'checksum': calculate_checksum(segments[seq_num]),
+                                'error_simulated': False
                             }
                             if not self.send_packet(client_socket, original_packet):
                                 logger.error(f"Failed to resend segment {seq_num}")

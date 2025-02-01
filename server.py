@@ -10,6 +10,7 @@ import json
 import os
 import logging
 import random
+import time  # Add this import
 from utils import (
     fragment_file, create_segment_packet, MAX_RETRIES,
     inject_error, calculate_checksum
@@ -45,6 +46,7 @@ class FileServer:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.settimeout(60)  # 60 second timeout for client connections
+        self.socket.setblocking(False)  # Make socket non-blocking
 
     def start(self):
         """
@@ -57,18 +59,34 @@ class FileServer:
 
         while True:
             try:
-                client_socket, client_address = self.socket.accept()
-            except socket.timeout:
-                logger.error("Timeout waiting for connection")
-                continue
+                try:
+                    client_socket, client_address = self.socket.accept()
+                except BlockingIOError:
+                    time.sleep(0.1)  # Sleep briefly to prevent CPU hogging
+                    continue
+                except socket.error as e:
+                    if e.errno == socket.errno.EAGAIN or e.errno == socket.errno.EWOULDBLOCK:
+                        time.sleep(0.1)
+                        continue
+                    else:
+                        raise
 
-            logger.info(f"Connection from {client_address}")
-            try:
-                self.handle_client(client_socket, client_address)
+                if client_socket:
+                    client_socket.setblocking(True)  # Make client socket blocking
+                    logger.info(f"Connection from {client_address}")
+                    try:
+                        self.handle_client(client_socket, client_address)
+                    except Exception as e:
+                        logger.error(f"Error handling client: {e}")
+                    finally:
+                        client_socket.close()
+
+            except KeyboardInterrupt:
+                logger.info("\nReceived keyboard interrupt, shutting down...")
+                break
             except Exception as e:
-                logger.error(f"Error handling client: {e}")
-            finally:
-                client_socket.close()
+                logger.error(f"Error in main loop: {e}")
+                continue
 
     def send_packet(self, client_socket, packet):
         """

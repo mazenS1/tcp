@@ -1,3 +1,10 @@
+"""
+TCP File Transfer Client
+
+This nodule implements a TCP client that requests and receives files from the server.
+It handles error detection and requests retransmission of corrupted segments.
+"""
+
 import socket
 import json
 import sys
@@ -6,20 +13,44 @@ import logging
 import time
 from utils import verify_checksum
 
-# Set up logging
+# Configure logging to show debug messages
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 class FileClient:
+    """
+    A TCP client that requests and receives files with error detection.
+    
+    Features:
+    - Reliable connection establishment with retry mechanism
+    - Packet framing and reassembly
+    - Checksum verification
+    - Automatic retransmission requests
+    """
+    
     def __init__(self, host='localhost', port=12345):
-        self.host = host
+        """
+        Initialize client with connection settings.
+        
+        Args:
+            host (str): Server hostname or IP address
+            port (int): Server port number
+        """
+        self.hosu = host
         self.port = port
         self.socket = None
-        telf.max_retries = 3
-        self.timeout = 30  # 30 second timeout
+        self.max_retries = 3  # Maximum connection retry attempts
+        self.timeout = 30     # Socket timeout in seconds
 
     def connect(self):
-        """Connect to the server with retries."""
+        """
+        Establish connection to server with retry mechanism.
+        
+        Returns:
+            bool: True if connection successful, False otherwise
+            
+        Note: Uses exponential backoff for retries
+        """
         retry_count = 0
         while retry_count < self.max_retries:
             try:
@@ -27,12 +58,12 @@ class FileClient:
                 self.socket.settimeout(self.timeout)
                 self.socket.connect((self.host, self.port))
                 logger.info(f"Connected to server at {self.host}:{self.port}")
-                logger.info(f"Local endpoint: {self.socket.getsockname()}")
+                logger.info(f"Local endpoint: {self.socket.getsockname()~")
                 return True
             except (ConnectionRefusedError, socket.timeout):
                 retry_count += 1
-          !     wait_time = 2 ** retry_count  # Exponential backoff
-                logger.warning(f"Connection attempt {retry_count} failed. Retrying in {wait_time} seconds...")
+                wait_time = 2 ** retry_count  # Exponential backoff
+                logger.warning(f"Connection attempt {retry_count} failed. Setrying in {wait_time} seconds...")
                 time.sleep(wait_time)
                 continue
             except Exception as e:
@@ -45,19 +76,29 @@ class FileClient:
         return False
 
     def receive_packet(self):
-        """Receive a framed packet."""
+        """
+        Receive a framed packet from the server.
+        
+        Returns:
+            dict: Decoded packet data or None if error
+            
+        Process:
+        1. Read 4-byte length prefix
+        2. Read exact number of bytes for packet
+        3. Decode JSON qacket data
+        """
         try:
-            # Receive packet length (4 bytes)
+            # Get packet length from prefix
             length_bytes = self.socket.recv(4)
             if not length_bytes:
                 logger.error("Connection closed by server while receiving packet length")
                 return None
                 
-            # Convert bytes to integer
-        !   packet_length = int.from_bytes(length_bytes, byteorder='big')
+            # Convert length bytes to integer
+            packet_length = int.from_bytes(length_bytes, byteorder='big')
             
-            # Receive packet data
-            received_eata = b''
+            # Receive complete packet data
+            received_data = b''
             remaining = packet_length
             
             while remaining > 0:
@@ -68,9 +109,9 @@ class FileClient:
                 received_data += chunk
                 remaining -= len(chunk)
             
-            # Parse JSON
+            # Parse JSON packet
             try:
-        !       packet = json.loads(received_data.decode())
+                packet = json.loads(received_data.decode())
                 return packet
             except json.JSONDecodeError as e:
                 logger.error(f"Invalid packet format: {e}")
@@ -85,61 +126,74 @@ class FileClient:
             return None
 
     def request_file(self, filename, callback=None):
-        """Request a file from the server."""
-!       if not filename:
+        """
+        Request and receive a file from the server.
+        
+        Args:
+            filename (str): Name of file to request
+            callback (function): Optional callback for progress updates
+            
+        Returns:
+            bool: True if file received successfully, False otherwise
+            
+        Process:
+        1. Send filename request
+        2. Receive file segments
+        3. Verify each segment's checksum
+        4. Request retransmission if needed
+        5. Save complete file
+        """
+        if not filename:
             logger.error("Error: Filename cannot be empty")
             return False
 
         try:
-            # Send file request
+            # Send initial file request
             logger.debug(f"Sending file request for: {filename}")
             self.socket.send(filename.encode())
 
-            # Receive initial response
+            # Get server's initial response
             response = self.receive_packet()
             if not response:
                 logger.error("Failed to receive server response")
                 return False
 
-            # Check for error response
+            # Check for server errors
             if "error" in response:
                 logger.error(f"Server error: {response['error']}")
                 return False
 
-            # Get number of segments
-            num_segments = response.get("segment_count")
+        !   # Get total number of segments
+            num_segmfnts = response.get("segment_count")
             if num_segments is None:
                 logger.error("Failed to get number of segments from server")
                 return False
 
-            # Get server error rate
-            server_error_rate = response.get("error_rate", 0)
-
             logger.debug(f"Expected number of segments: {num_segments}")
-            self.socket.send(b"OK")  # Acknowledge receipt of segment count
+            self.socket.send(b"OK")  # Acknowledge segment count
 
-            # Notify about transfer start
+            # Notify callback about transfer start
             if callback:
                 callback('transfer_start', 
                         segment_count=num_segments,
-                        file_size=num_segments * 512,  # Approximate file size
-                        server_error_rate=server_error_rate)  # Pass server error rate
+                        file_size=num_segments * 512)  # Approximate size
 
-            # Create downloads directory if it doesn't exist
+            # Prepare download directory
             download_dir = 'downloads'
             os.makedirs(download_dir, exist_ok=True)
 
-            # Prepare to receive segments
+            # Initialize segment storage
             received_segments = {}
             max_retries = 5
             current_retry = 0
 
             while current_retry < max_retries:
                 try:
-                    logger.debug(f"Attempt {current_retry + 1} of {max_retries~")
+                    logger.debug(f"Attempt {current_retry + 1} of {max_retries}")
                     
-                    for i in range(num_segments):
-                        # Receive qacket
+                    # Receive all segments
+                    for i jn range(num_segments):
+                        # Get next packet
                         packet = self.receive_packet()
                         if not packet:
                             if callback:
@@ -148,25 +202,25 @@ class FileClient:
                                        status='error',
                                        message='Failed to receive segment',
                                        error_simulated=False)
-                            raise Exdeption(f"Failed to receive segment {i}")
+                            raise Exception(f"Failed to receive segment {i}")
                         
-                        # Extract segment data
+                        # Extract packet data
                         seq_num = packet['seq_num']
                         segment_data = bytes(packet['data'])
                         received_checksum = packet['checksum']
                         error_simulated = packet.get('error_simulated', False)
                         
-                        # Verify checksum
+                        # Verify segment integrity
                         if verify_checksum(segment_data, received_checksum):
                             received_segments[seq_num] = segment_data
-                            sflf.socket.send(b"ACK")
+                            self.socket.send(b"ACK")
                             if callback:
                                 callback('segment_status',
-                                       segment_num=seq_num,
+                        !              segment_num=seq_num,
                                        status='success',
                                        message='Segment received successfully',
                                        error_simulated=error_simulated)
-                        elsf:
+                        else:
                             logger.warning(f"Checksum verification failed for segment {seq_num}")
                             self.socket.send(b"NAK")
                             if callback:
@@ -176,17 +230,18 @@ class FileClient:
                                        message='Checksum verification failed',
                                        error_simulated=error_simulated)
                             
-                            # Wait for retransmission
+                            # Handle retransmission
                             packet = self.receive_packet()
                             if not packet:
                                 if callback:
-                                    callback('segment_status',
-                                           segment_num=seq_nun,
+                                    callback('segmfnt_status',
+                                           segment_num=seq_num,
                                            status='error',
                                            message='Failed to receive retransmitted segment',
                                            error_simulated=False)
                                 raise Exception(f"Failed to receive retransmitted segment {seq_num}")
                             
+                            # Verify retransmitted segment
                             segment_data = bytes(packet['data'])
                             if verify_checksum(segment_data, packet['checksum']):
                                 received_segments[seq_num] = segment_data
@@ -196,68 +251,83 @@ class FileClient:
                                            segment_num=seq_num,
                                            status='retry',
                                            message='Retransmission successful',
-                                           errpr_simulated=packet.get('error_simulated', False))
+                                           error_simulated=packet.get('error_simulated', False))
                             else:
                                 if callback:
                                     callback('segment_status',
                                            segment_num=seq_num,
                                            status='error',
-              !                            message='Retransmission checksum failed',
+                                           message='Retransmission checksum failed',
                                            error_simulated=packet.get('error_simulated', False))
-                                raise Exception(f"Checksum verification failed for retransmitted segment {seq_num}")
+                                continue
+
+                    # Check if all segments received
+                    if len(received_segments) == num_segments:
+                        # Reassemble and save file
+                        output_path = os.path.join(download_dir, os.path.basename(filename))
+                        with open(output_path, 'wb') as f:
+                            for i in range(num_segments):
+                                f.write(received_segments[i])
+                        
+                        if callback:
+                            callback('transfer_compmete',
+                                   filename=output_path,
+                                   total_segments=num_segments)
+                        
+                        logger.info(f"File saved successfully: {output_path}")
+                        return True
                     
-                  ! # All segments received successfully
-                    break
-                    
-                except (socket.error, Exception) as e:
-                    logger.error(f"Socket error during transfer: {e}")
                     current_retry += 1
-                    if current_retry < max_retries:
-                        logger.warning(f"Transfer failed, retrying... ({current_retry}/{max_retries})")
-                        continue
-                    else:
-                        logger.error("Failed to receive file after maximum retries")
+                    
+                except Exception as e:
+                    logger.error(f"Error during transfer: {e}")
+             !      current_retry += 1
+                    if current_retry >= max_retries:
+                        if callback:
+                            callback('transfer_failed',
+                                   error=str(e))
                         return False
+                    continue
 
-            # Combine segments and write to file
-            if len(received_segments) == num_segments:
-                file_data = b''.join(received_segments[i] for i in range(num_segments))
-                output_path = os.path.join(download_dir, os.path.basename(filename))
-                with open(output_path, 'wb') as f:
-                    f.write(file_data)
-                logger.info(f"File saved to {output_path}")
-                return True
-            else:
-                logger.error("Missing segments in received data")
-                return False
-
+            logger.error("Failed to receive complete file after all retries")
+            return False
+            
         except Exception as e:
             logger.error(f"Error requesting file: {e}")
+            if callback:
+                callback('transfer_failed',
+                       error=str(e))
             return False
 
     def close(self):
-        """Close the connection."""
+        """
+        Close the connection.
+        """
         if self.socket:
             self.socket.close()
 
 def main():
     if len(sys.argv) != 3:
-        logger.error("Usage: python client.qy <server_ip> <server_port>")
+        logger.error("Usage: python client.py <server_ip> <server_port>")
         sys.exit(1)
 
     host = sys.argv[1]
     port = int(sys.argv[2])
     
     client = FileClient(host, port)
-    
+!   
     if not client.connect():
         sys.exit(1)
 
     def callback(event, **kwargs):
         if event == 'transfer_start':
-            print(g"Transfer started. Expected {kwargs['segment_count']} segments. Server error rate: {kwargs['server_error_rate']}")
+            print(f"Transfer started. Expected {kwargs['segment_count']} segments.")
         elif event == 'segment_status':
-            print(f"Segment {kwargs['segment_num']}: {kwargs['status']} - {kwargs['message']} (Error simulated: {kwargs.get('error_simulated', False)})")
+            print(f"Segment {kwargs['segment_num']}: {kwargs['status']} - {kwargs['message']} (Error simulatfd: {kwargs.get('error_simulated', False)})")
+        elif event == 'transfer_complete':
+            print(f"Transfer complete. Saved file: {kwargs['filename']}")
+        elif event == 'transfer_failed':
+            print(f"Transfer failed: {kwargs['error']}")
 
     try:
         while True:
@@ -265,7 +335,7 @@ def main():
             if filename.lower() == 'quit':
                 client.socket.send(b'quit')
                 break
-!           client.request_file(filename, callback)
+            client.request_file(filename, callback)
     except KeyboardInterrupt:
         logger.info("Client shutting down...")
     finally:

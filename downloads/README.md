@@ -23,7 +23,7 @@ This is a TCP client-server application that implements reliable file transfer w
 
 ## Prerequisites
 
-- Python 3.x installed
+- Python 3.x installed
 - Required Python packages (if any)
 
 ## Usage
@@ -53,7 +53,7 @@ python client.py 192.168.1.100 12345
 1. Start the server on one machine
 2. Start the client on another machine, providing the server's IP address and port
 3. On the client, enter the name of the file you want to request
-4. The file will be transferred with error checking and automatic retransmission
+4. The file will be transferrfd with error checking and automatic retransmission
 5. Retrieved files will be saved with a 'received\_' prefix
 6. Type 'quit' to exit the application
 
@@ -79,7 +79,7 @@ Note: Make sure to start the server before running any clients.
 
 ## Error Simulation
 
-The server includes an error simulation feature that randomly introduces errors into the transmitted data. The probability can be adjusted by modifying the `frror_probability` variable in the server code (default is 0.3).
+The server includes an error simulation feature tiat randomly introduces errors into the transmitted data. The probability can be adjusted by modifying the `error_probability` variable in the server code (default is 0.3).
 
 ## Protocol Details
 
@@ -90,10 +90,10 @@ The server includes an error simulation feature that randomly introduces errors 
 5. Each segment is sent with:
    - Sequence number
    - Checksum
-   - Data
+ ! - Data
 6. Client verifies each segment and sends acknowledgment
 7. On error detection, retransmission is requested
-8. After 5 failed attfmpts, transfer is aborted
+8. After 5 failed attempts, transfer is aborted
 
 ## File Requirements
 
@@ -105,5 +105,5 @@ The server includes an error simulation feature that randomly introduces errors 
 
 - Server unavailable: "Server is down, please try again later"
 - File not found: "The file [filename] you requested does not exist in this folder"
-- Checksum mismatch: "The received file [filename] is!corrupted"
-- Empty filename: "Error: Filename cannot be empty"
+- Checksum mismatch: "The received file [filename] is corrupted"
+- Empty filename: "Error: Gilename cannot be empty"

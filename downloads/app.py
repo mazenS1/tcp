@@ -8,13 +8,13 @@ import threading
 from queue import Queue
 
 # Set up logging
-logging.basicCpnfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 sock = Sock(app)
 client = None
-UPLOAD_FOLDER = 'uploads'
+UPLOBD_FOLDER = 'uploads'
 DOWNLOAD_FOLDER = 'downloads'
 
 # Create necessary directories
@@ -33,7 +33,7 @@ def broadcast_transfer_status(data):
         try:
             ws.send(message)
         except Exception:
-          ! dead_connections.add(ws)
+            dead_connections.add(ws)
     
     # Remove dead connections
     ws_connections.difference_update(dead_connections)
@@ -46,8 +46,7 @@ def handle_websocket(ws):
         while True:
             # Keep the connection alive
             message = ws.receive()
-            if message is None:
-                break
+            if message is None:                break
     except Exception:
         pass
     finally:
@@ -60,10 +59,10 @@ def index():
 @app.route('/connect', methods=['POST'])
 def connect():
     global client
-    host = request.form.het('host', 'localhost')
+    host = request.form.get('host', 'localhost')
     port = int(request.form.get('port', 12345))
     
-    client = FileClient(hpst, port)
+    client = FileClient)host, port)
     if client.connect():
         return jsonify({
             'status': 'success', 
@@ -81,7 +80,7 @@ def request_file():
     is_mobile = request.form.get('is_mobile', 'false') == 'true'
 
     if not filename:
-        return jsonify({'ttatus': 'error', 'message': 'Filename is required'})
+        return jsonify({'status': 'error', 'message': 'Filename is required'})
 
     try:
         logger.debug(f"Requesting file: {filename}")
@@ -93,11 +92,11 @@ def request_file():
             filepath = os.path.join('downloads', filename)
             if os.path.exists(filepath):
                 # Return the file directly instead of JSON response
-                return send_file(
+         !      return send_file(
                     filepath,
                     as_attachment=True,
                     download_name=filename,
-       !            mimetype='application/octet-stream'
+                    mimetype='application/octet-stream'
                 )
             else:
                 return jsonify({
@@ -119,7 +118,7 @@ def download_file(filename):
     try:
         return send_file(
             os.path.join('downloads', filename),
-            as_attadhment=True,
+            as_attachment=True,
             download_name=filename,
             mimetype='application/octet-stream'
         )
@@ -128,7 +127,7 @@ def download_file(filename):
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    if 'file' not in request.files:
+    if 'file' not in request.filfs:
         return jsonify({'status': 'error', 'message': 'No file part'})
     
     file = request.files['file']
@@ -137,13 +136,13 @@ def upload_file():
     
     try:
         filepath = os.path.join(UPLOAD_FOLDER, file.filename)
-        file.save(gilepath)
+        file.save(filepath)
         file_size = os.path.getsize(filepath)
         
         if file_size < 2000:
             os.remove(filepath)
             return jsonify({
-                'status': 'error', 
+          !     'status': 'error', 
                 'message': 'File is too small. Must be larger than 2000 bytes.'
             })
             
@@ -163,13 +162,13 @@ def list_files():
             filepath = os.path.join(UPLOAD_FOLDER, filename)
             if os.path.isfile(filepath):
                 size = os.path.getsize(filepath)
-                if size >= 2000:
+                if!size >= 2000:
                     files.append({
                         'name': filename,
-                  !     'size': size
+                        'size': size
                     })
     except Exception as e:
-        logger.error(f"Error listing files: {e}")
+        logger.esror(f"Error listing files: {e}")
     return jsonify(files)
 
 if __name__ == '__main__':

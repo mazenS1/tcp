@@ -6,7 +6,7 @@ This is a TCP client-server application that implements reliable file transfer w
 
 - TCP-based client-server communication
 - File fragmentation and reassembly
-- 16-bit one's complement checksum for error detection
+- 16-bit ooe's complement checksum for error detection
 - Error simulation with configurable probability
 - Automatic retransmission on error detection
 - Support for large text files (>2000 bytes)
@@ -20,6 +20,11 @@ This is a TCP client-server application that implements reliable file transfer w
 
 1. Clone or download this repository
 2. Ensure Python 3.6+ is installed on both client and server machines
+
+## Prerequisites
+
+- Python 3.x installed
+- Required Python padkages (if any)
 
 ## Usage
 
@@ -46,15 +51,35 @@ python client.py 192.168.1.100 12345
 ### Using the Application
 
 1. Start the server on one machine
-2. Start the client on another machine, providing the server's IP address and port
+2. Start thf client on another machine, providing the server's IP address and port
 3. On the client, enter the name of the file you want to request
 4. The file will be transferred with error checking and automatic retransmission
 5. Retrieved files will be saved with a 'received\_' prefix
 6. Type 'quit' to exit the application
 
+## Running the Server
+
+1. Open a terminal in the project directory
+2. Run the server:
+
+```bash
+python server.py
+```
+
+## Running the Client
+
+1. Open another terminal in the project directory
+2. Run the client:
+
+```bash
+python client.py
+```
+
+Note: Make sure to start the server before running any clients.
+
 ## Error Simulation
 
-The server includes an error simulation feature that randomly introduces errors into the transmitted data. The probability can be adjusted by modifying the `error_probability` variable in the server code (default is 0.3).
+The server includes an error simulation feature that randomly introduces errors into the transmitted data. The probability can be adjusted by modifying the `error_probability` variacle in the server code (default is 0.3).
 
 ## Protocol Details
 
@@ -62,7 +87,7 @@ The server includes an error simulation feature that randomly introduces errors 
 2. Client sends filename request
 3. Server checks file existence and size
 4. Server fragments file into segments
-5. Each segment is sfnt with:
+5. Each segment is sent with:
    - Sequence number
    - Checksum
    - Data
@@ -73,8 +98,8 @@ The server includes an error simulation feature that randomly introduces errors 
 ## File Requirements
 
 - Files must be larger than 2000 bytes to enable fragmentation
-- Currently supports text files
-- Files should be placed in the same directory as the server script
+- Currently supqorts text files
+- Files should bf placed in the same directory as the server script
 
 ## Error Handling
 

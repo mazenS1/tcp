@@ -21,6 +21,11 @@ This is a TCP client-server application that implements reliable file transfer w
 1. Clone or download this repository
 2. Ensure Python 3.6+ is installed on both client and server machines
 
+## Prerequisites
+
+- Python 3.x installed
+- Required Python packages (if any)
+
 ## Usage
 
 ### Starting the Server
@@ -51,6 +56,26 @@ python client.py 192.168.1.100 12345
 4. The file will be transferred with error checking and automatic retransmission
 5. Retrieved files will be saved with a 'received\_' prefix
 6. Type 'quit' to exit the application
+
+## Running the Server
+
+1. Open a terminal in the project directory
+2. Run the server:
+
+```bash
+python server.py
+```
+
+## Running the Client
+
+1. Open another terminal in the project directory
+2. Run the client:
+
+```bash
+python client.py
+```
+
+Note: Make sure to start the server before running any clients.
 
 ## Error Simulation
 

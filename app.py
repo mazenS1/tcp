@@ -70,76 +70,60 @@ def connect():
             'message': f'Connected to server at {host}:{port}\nLocal endpoint: {client.socket.getsockname()}'
         })
     return jsonify({'status': 'error', 'message': 'Failed to connect to server'})
-
 @app.route('/request-file', methods=['POST'])
 def request_file():
     global client
     if not client:
         return jsonify({'status': 'error', 'message': 'Not connected to server'})
-    
+
     filename = request.form.get('filename')
     error_rate = float(request.form.get('error_rate', 0.3))
-    
+    is_mobile = request.form.get('is_mobile', 'false') == 'true'
+
     if not filename:
         return jsonify({'status': 'error', 'message': 'Filename is required'})
-    
+
     try:
         logger.debug(f"Requesting file: {filename}")
-        
-        # Set error simulation rate
         client.error_probability = error_rate
-        
-        # Create a queue for transfer status updates
-        status_queue = Queue()
-        
-        def transfer_callback(status_type, **kwargs):
-            """Callback function for transfer status updates."""
-            status_queue.put({
-                'type': status_type,
-                **kwargs
-            })
-        
-        # Start file transfer in a separate thread
-        def transfer_thread():
-            success = client.request_file(filename, callback=transfer_callback)
-            status_queue.put({'type': 'transfer_complete', 'success': success})
-        
-        thread = threading.Thread(target=transfer_thread)
-        thread.start()
-        
-        # Process status updates
-        while True:
-            status = status_queue.get()
-            if status['type'] == 'transfer_complete':
-                if status['success']:
-                    # File should now be in downloads directory
-                    filepath = os.path.join('downloads', filename)
-                    if os.path.exists(filepath):
-                        broadcast_transfer_status({
-                            'type': 'transfer_complete',
-                            'success': True,
-                            'message': 'File transfer completed successfully'
-                        })
-                        return send_file(
-                            filepath,
-                            as_attachment=True,
-                            download_name=filename
-                        )
-                    else:
-                        return jsonify({
-                            'status': 'error',
-                            'message': 'File transfer completed but file not found'
-                        })
-                else:
-                    return jsonify({
-                        'status': 'error',
-                        'message': 'File transfer failed'
-                    })
+
+        success = client.request_file(filename)
+
+        if success:
+            filepath = os.path.join('downloads', filename)
+            if os.path.exists(filepath):
+                # Return the file directly instead of JSON response
+                return send_file(
+                    filepath,
+                    as_attachment=True,
+                    download_name=filename,
+                    mimetype='application/octet-stream'
+                )
             else:
-                broadcast_transfer_status(status)
-        
+                return jsonify({
+                    'status': 'error',
+                    'message': 'File transfer completed but file not found'
+                })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': 'File transfer failed'
+            })
+
     except Exception as e:
         logger.error(f"Error requesting file: {e}")
+        return jsonify({'status': 'error', 'message': str(e)})
+    
+@app.route('/download/<filename>')
+def download_file(filename):
+    try:
+        return send_file(
+            os.path.join('downloads', filename),
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/octet-stream'
+        )
+    except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
 
 @app.route('/upload', methods=['POST'])
